@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NorthLadder — Bid Intelligence v0</title>
+<style>
+  :root {
+    --blue: #2E5CE6;
+    --black: #111111;
+    --gray: #5B6472;
+    --lightbg: #F4F6FA;
+    --lightblue: #EAF0FF;
+    --border: #E3E7EF;
+    --amber: #C97A0A;
+    --amber-tint: #FFF3E0;
+    --green: #0F9D6D;
+    --bg: #FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Arial, "Helvetica Neue", sans-serif;
+    background: var(--bg);
+    color: var(--black);
+    padding: 0;
+  }
+  .topbar { height: 10px; background: var(--blue); }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 24px 56px; }
+
+  .kicker { color: var(--blue); font-weight: 700; font-size: 12px; letter-spacing: 1px; margin-bottom: 6px; }
+  h1 { font-size: 26px; margin: 0 0 22px; }
+
+  .layout { display: grid; grid-template-columns: 1.55fr 1fr; gap: 24px; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+  .device-picker { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .chip {
+    padding: 7px 14px; border-radius: 16px; border: 1px solid var(--border);
+    background: #fff; font-size: 12.5px; font-weight: 700; cursor: pointer; color: var(--black);
+  }
+  .chip.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+  .card { border: 2px solid var(--black); border-radius: 14px; overflow: hidden; background: #fff; }
+  .card-head { background: var(--blue); padding: 14px 18px; display: flex; align-items: center; gap: 10px; }
+  .gavel { width: 30px; height: 30px; border-radius: 50%; background: var(--amber); display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+  .card-head .title { color: #fff; font-weight: 700; font-size: 16px; }
+
+  .device-row { background: var(--lightbg); padding: 16px 18px; display: flex; gap: 14px; align-items: center; }
+  .thumb { width: 44px; height: 60px; border-radius: 6px; background: linear-gradient(160deg,#3a4a8a,#7a3adb); flex-shrink: 0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px; font-weight:700; }
+  .device-meta { flex: 1; }
+  .device-meta .name { font-weight: 700; font-size: 15px; }
+  .device-meta .spec { color: var(--gray); font-size: 12.5px; margin-top: 2px; }
+  .assess-link { color: var(--blue); font-weight: 700; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
+  .assess-detail { font-size: 11.5px; color: var(--gray); margin-top: 6px; display: none; }
+  .assess-detail.show { display: block; }
+
+  .suggest-box { margin: 16px 18px; background: var(--lightblue); border-radius: 12px; padding: 16px; }
+  .suggest-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .suggest-label { color: var(--blue); font-weight: 700; font-size: 11px; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .suggest-amt { font-size: 32px; font-weight: 800; }
+  .suggest-right { text-align: right; font-size: 13px; color: var(--gray); }
+  .suggest-right b { color: var(--black); }
+  .suggest-right .margin { color: var(--green); font-weight: 700; }
+
+  .confidence-row { background: #fff; border-radius: 8px; padding: 10px 12px; margin-top: 12px; font-size: 12.5px; }
+  .confidence-row .lvl { font-weight: 700; }
+  .confidence-row .lvl.high { color: var(--green); }
+  .confidence-row .lvl.medium { color: var(--amber); }
+  .confidence-row .lvl.low { color: #C23238; }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 14px; }
+  .btn { flex: 1; padding: 11px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; text-align: center; border: none; }
+  .btn-primary { background: var(--amber); color: #fff; }
+  .btn-outline { background: #fff; border: 1.5px solid var(--black); color: var(--black); }
+
+  .why-toggle { margin: 4px 18px 0; font-size: 13px; }
+  .why-toggle .q { color: var(--blue); font-weight: 700; cursor: pointer; }
+  .why-toggle .show { color: var(--blue); font-weight: 700; cursor: pointer; margin-left: 10px; }
+
+  .basis-table { margin: 12px 18px 0; display: none; }
+  .basis-table.show { display: block; }
+  .basis-row { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .basis-row .lab { color: var(--gray); }
+  .basis-row .val { font-weight: 700; }
+  .basis-row .val.hi { color: var(--green); }
+
+  .current-bid-box { margin: 14px 18px 18px; background: var(--amber-tint); border-radius: 8px; padding: 12px 14px; font-size: 13px; }
+  .current-bid-box.good { background: #E4F7F1; }
+  .current-bid-box b { font-weight: 700; }
+  .bid-slider-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .bid-slider-row input[type=range] { flex: 1; accent-color: var(--amber); }
+
+  .side-kicker { color: var(--blue); font-weight: 700; font-size: 11.5px; letter-spacing: 1px; margin: 4px 0 12px; }
+  .side-item { display: flex; gap: 10px; margin-bottom: 16px; }
+  .num { width: 26px; height: 26px; border-radius: 50%; background: var(--blue); color: #fff; font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .side-item h4 { margin: 0 0 3px; font-size: 13.5px; }
+  .side-item p { margin: 0; font-size: 12px; color: var(--gray); line-height: 1.4; }
+
+  .rule-box { background: var(--lightbg); border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; }
+  .rule-box h4 { margin: 0 0 3px; font-size: 13px; }
+  .rule-box p { margin: 0; font-size: 11.5px; color: var(--gray); line-height: 1.4; }
+
+  footer { text-align: center; margin-top: 24px; font-size: 11px; color: var(--gray); }
+</style>
+</head>
+<body>
+<div class="topbar"></div>
+<div class="wrap">
+  <div class="kicker">DESIGN 1 — THE BID SCREEN &nbsp;·&nbsp; v0 clickable prototype</div>
+  <h1>Recommend a price, show the reasoning, let the buyer decide</h1>
+
+  <div class="device-picker" id="devicePicker"></div>
+
+  <div class="layout">
+    <div>
+      <div class="card">
+        <div class="card-head">
+          <div class="gavel">🔨</div>
+          <div class="title">Bid Intelligence</div>
+        </div>
+
+        <div class="device-row">
+          <div class="thumb" id="thumb">📱</div>
+          <div class="device-meta">
+            <div class="name" id="deviceName">iPhone 14 · 128GB · Grade B</div>
+            <div class="spec" id="deviceSpec">Battery 87% · Minor screen scratch · Quantity 1</div>
+            <div class="assess-detail" id="assessDetail">Assessment: grade confirmed by 3-point check, battery cycle count 312, no functional faults, minor cosmetic scratch on screen only.</div>
+          </div>
+          <div class="assess-link" onclick="toggleAssess()">View assessment report</div>
+        </div>
+
+        <div class="suggest-box">
+          <div class="suggest-top">
+            <div>
+              <div class="suggest-label">SUGGESTED BID</div>
+              <div class="suggest-amt" id="suggestAmt">INR 25,700</div>
+            </div>
+            <div class="suggest-right">
+              Expected resale <b id="resaleAmt">29,000</b><br>
+              Estimated margin <span class="margin" id="marginAmt">3,300</span>
+            </div>
+          </div>
+          <div class="confidence-row">
+            <span class="lvl" id="confLevel">Confidence: Medium</span>
+            <span id="confNote"> · based on 240 similar transactions in the last 30 days</span>
+          </div>
+        </div>
+
+        <div class="btn-row" style="margin: 0 18px 16px;">
+          <button class="btn btn-primary" id="useSuggestedBtn">Use suggested bid</button>
+          <button class="btn btn-outline" id="ownBidBtn">Enter my own bid</button>
+        </div>
+
+        <div class="why-toggle">
+          <span class="q" onclick="toggleBasis()">Why <span id="whyAmt">25,700</span>?</span>
+          <span class="show" onclick="toggleBasis()" id="showBasisLabel">Show the basis</span>
+        </div>
+
+        <div class="basis-table" id="basisTable">
+          <div class="basis-row"><span class="lab">Similar devices cleared at</span><span class="val" id="clearRange">24,000 – 26,200</span></div>
+          <div class="basis-row"><span class="lab">Your historical average for this model</span><span class="val" id="histAvg">25,100</span></div>
+          <div class="basis-row"><span class="lab">Current demand for this model</span><span class="val hi" id="demandLvl">High</span></div>
+        </div>
+
+        <div class="current-bid-box" id="currentBidBox">
+          <span><b>Your current bid <span id="curBidAmt">24,500</span>.</b> <span id="curBidMsg">That is below the range similar devices cleared in.</span></span>
+          <div class="bid-slider-row">
+            <input type="range" id="bidSlider" min="0" max="100" value="35">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="side-kicker">HOW THE SCREEN IS BUILT</div>
+      <div class="side-item"><div class="num">1</div><div><h4>Understand</h4><p>Verified device data: grade, battery, faults, quantity.</p></div></div>
+      <div class="side-item"><div class="num">2</div><div><h4>Benchmark</h4><p>What comparable devices actually cleared at, recently.</p></div></div>
+      <div class="side-item"><div class="num">3</div><div><h4>Recommend</h4><p>A suggested bid from comparables, the buyer's own history, condition and demand.</p></div></div>
+      <div class="side-item"><div class="num">4</div><div><h4>Decide</h4><p>Accept the suggestion or type another number.</p></div></div>
+
+      <div class="side-kicker" style="margin-top:8px;">DESIGN RULES</div>
+      <div class="rule-box"><h4>Suggest, never auto-bid</h4><p>Bidding on a buyer's behalf would remove the judgement that makes price discovery real.</p></div>
+      <div class="rule-box"><h4>Always show the basis</h4><p>A number with no reasoning gets ignored once, then distrusted.</p></div>
+      <div class="rule-box"><h4>Admit low confidence</h4><p>On rare models or new buyers, say the data is thin instead of inventing precision.</p></div>
+    </div>
+  </div>
+
+  <footer>NorthLadder — Associate Product Manager, Data & AI case study · v0, all data is mock / illustrative</footer>
+</div>
+
+<script>
+const devices = [
+  {
+    chip: "iPhone 14 · Grade B", name: "iPhone 14 · 128GB · Grade B", spec: "Battery 87% · Minor screen scratch · Quantity 1",
+    thumb: "📱", suggested: 25700, resale: 29000, low: 24000, high: 26200, hist: 25100, demand: "High",
+    confidence: "Medium", confNote: "based on 240 similar transactions in the last 30 days",
+    assess: "Assessment: grade confirmed by 3-point check, battery cycle count 312, no functional faults, minor cosmetic scratch on screen only."
+  },
+  {
+    chip: "MacBook Air · Grade A", name: "MacBook Air M1 · 256GB · Grade A", spec: "Battery health 91% · No faults · Quantity 1",
+    thumb: "💻", suggested: 41500, resale: 46800, low: 40200, high: 43000, hist: 41000, demand: "Medium",
+    confidence: "High", confNote: "based on 310+ similar transactions in the last 30 days",
+    assess: "Assessment: full functional pass, battery cycle count 140, cosmetic grade A confirmed, all ports tested."
+  },
+  {
+    chip: "Tablet · new model", name: "Galaxy Tab S9 · 128GB · Grade C", spec: "Battery health 78% · Screen hairline crack · Quantity 1",
+    thumb: "📟", suggested: 11200, resale: 13900, low: 9800, high: 12400, hist: null, demand: "Unclear",
+    confidence: "Low", confNote: "only 6 similar transactions — treat as a starting point, not a fact",
+    assess: "Assessment: limited comparable history for this SKU, condition confirmed but resale channel data is thin."
+  }
+];
+
+let current = 0;
+const el = id => document.getElementById(id);
+const fmt = n => n.toLocaleString("en-IN");
+
+function renderPicker() {
+  const wrap = el("devicePicker");
+  wrap.innerHTML = "";
+  devices.forEach((d, i) => {
+    const c = document.createElement("div");
+    c.className = "chip" + (i === current ? " active" : "");
+    c.textContent = d.chip;
+    c.onclick = () => { current = i; el("assessDetail").classList.remove("show"); el("basisTable").classList.remove("show"); el("showBasisLabel").textContent = "Show the basis"; render(true); };
+    wrap.appendChild(c);
+  });
+}
+
+function render(resetSlider) {
+  const d = devices[current];
+  el("deviceName").textContent = d.name;
+  el("deviceSpec").textContent = d.spec;
+  el("thumb").textContent = d.thumb;
+  el("assessDetail").textContent = d.assess;
+  el("suggestAmt").textContent = "INR " + fmt(d.suggested);
+  el("whyAmt").textContent = fmt(d.suggested);
+  el("resaleAmt").textContent = fmt(d.resale);
+  el("marginAmt").textContent = fmt(d.resale - d.suggested);
+  el("clearRange").textContent = fmt(d.low) + " – " + fmt(d.high);
+  el("histAvg").textContent = d.hist ? fmt(d.hist) : "Not enough history yet";
+  el("demandLvl").textContent = d.demand;
+  el("demandLvl").className = "val" + (d.demand === "High" ? " hi" : "");
+
+  const lvl = el("confLevel");
+  lvl.textContent = "Confidence: " + d.confidence;
+  lvl.className = "lvl " + d.confidence.toLowerCase();
+  el("confNote").textContent = " · " + d.confNote;
+
+  if (resetSlider) el("bidSlider").value = 35;
+  renderPicker();
+  updateBidFromSlider();
+}
+
+function updateBidFromSlider() {
+  const d = devices[current];
+  const pct = el("bidSlider").value / 100;
+  const min = d.low * 0.94, max = d.high * 1.04;
+  const bid = Math.round((min + (max - min) * pct) / 10) * 10;
+  el("curBidAmt").textContent = fmt(bid);
+  const box = el("currentBidBox");
+  if (bid < d.low) {
+    box.className = "current-bid-box";
+    el("curBidMsg").textContent = "That is below the range similar devices cleared in.";
+  } else if (bid > d.high) {
+    box.className = "current-bid-box good";
+    el("curBidMsg").textContent = "That is above the typical clearing range — strong odds of winning this match.";
+  } else {
+    box.className = "current-bid-box good";
+    el("curBidMsg").textContent = "That sits within the range similar devices cleared in.";
+  }
+}
+
+function toggleBasis() {
+  const t = el("basisTable");
+  t.classList.toggle("show");
+  el("showBasisLabel").textContent = t.classList.contains("show") ? "Hide the basis" : "Show the basis";
+}
+function toggleAssess() {
+  el("assessDetail").classList.toggle("show");
+}
+
+el("bidSlider").addEventListener("input", updateBidFromSlider);
+el("useSuggestedBtn").addEventListener("click", () => {
+  const d = devices[current];
+  const pct = (d.suggested - d.low * 0.94) / ((d.high * 1.04) - (d.low * 0.94));
+  el("bidSlider").value = Math.round(pct * 100);
+  updateBidFromSlider();
+});
+el("ownBidBtn").addEventListener("click", () => el("bidSlider").focus());
+
+render(true);
+</script>
+</body>
+</html>
